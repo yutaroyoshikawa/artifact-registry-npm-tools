@@ -116,7 +116,7 @@ async function updateConfigFiles(fromConfigPath, toConfigPath, creds) {
 async function updateConfigFile(configPath, creds) {
   
   contents = await fs.promises.readFile(configPath, 'utf8')
-
+  const registryRegex = /(@[a-zA-Z0-9-]+:)?registry=https:(\/\/[a-zA-Z0-9-]+[-]npm[.]pkg[.]dev\/.*\/)/;
   const regex = /(\/\/[a-zA-Z1-9-]+[-]npm[.]pkg[.]dev\/.*\/:_authToken=).*/g;
   const legacyRegex =
       /(\/\/[a-zA-Z1-9-]+[-]npm[.]pkg[.]dev\/.*\/:_password=).*(\n\/\/[a-zA-Z1-9-]+[-]npm[.]pkg[.]dev\/.*\/:username=oauth2accesstoken)/g;
@@ -128,9 +128,10 @@ async function updateConfigFile(configPath, creds) {
     contents = newContents;
   }
   else if (!contents.match(regex)) {
-    throw new Error(
-        'Artifact Registry config not found in ' + configPath +
-        '\nRun `gcloud beta artifacts print-settings npm`.');
+    const m = contents.match(registryRegex);
+    const registry = m[2] ?? "";
+    newContents = [contents, `${registry}:_authToken=""`].join("");
+    contents = newContents;
   }
   newContents = contents.replace(regex, `$1"${creds}"`);
   const tempConfigPath = configPath.replace('.npmrc', '.npmrc-temp');
